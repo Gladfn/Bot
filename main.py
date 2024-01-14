@@ -4,12 +4,12 @@ import json
 import time
 import mysql.connector
 
-from DB import DB
+from DB import DB as D
 from threading import Thread
 from telebot import types
 
 bot = telebot.TeleBot(config.TOKEN)
-database = DB(config.mysql)
+DB = D(config.mysql)
 
 bot.send_message(1294113685, "Start Bot")
 
@@ -20,18 +20,18 @@ def json_loads(data):
         return None
 
 def get_user(message):
-    data = database.select('Users', ['id', 'name', 'surname', 'num_class', 'let_class', 'id_team', 'status'], [['id', '=', message.chat.id]], 1)
+    data = DB.select('Users', ['id', 'name', 'surname', 'num_class', 'let_class', 'id_team', 'status'], [['id', '=', message.chat.id]], 1)
     if (data):
         return {"id": data[0][0], "name": data[0][1], "surname": data[0][2], "num_class": data[0][3], "let_class": data[0][4], "id_team":data[0][5], "status": data[0][6],}
     else:
-        database.insert('Users', ['id', 'name', 'surname', 'num_class', 'let_class', 'id_team', 'status'], [[message.chat.id, message.chat.first_name, "NaN", 5, 'А', 0, 'reg_menu']])
+        DB.insert('Users', ['id', 'name', 'surname', 'num_class', 'let_class', 'id_team', 'status'], [[message.chat.id, message.chat.first_name, "NaN", 5, 'А', 0, 'reg_menu']])
         return {"id": message.chat.id, "name": message.chat.first_name, "num_class": 5, "let_class": 'А', "id_team": 0, "status": 'reg_menu'}
 
 def log(message, user):
     query = "INSERT INTO log (text) VALUES (%s)"
 
 def user_update(user, status=None, settings=None):
-    database.update('Users', {'status': status}, [['id', '=', user['id']]])
+    DB.update('Users', {'status': status}, [['id', '=', user['id']]])
 
 def markups(buttons):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -145,8 +145,8 @@ class MessageHandler:
 def update_connection():
     while True:
         try:
-            del database
-            database = DB(mysql)
+            del DB
+            DB = DB(mysql)
             time.sleep(5)
         except:
             pass
