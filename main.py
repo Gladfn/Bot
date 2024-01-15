@@ -51,6 +51,8 @@ def start_message(message):
         bot.send_message(message.chat.id,"Привет! Я бот, в котором можно тренеровать навыки в CTF(Capture the flag)", reply_markup=menu_markups(user))
         log(message, user)
         user_update(user, "menu")
+    else:
+        bot.send_message(user["id"], "Инициализирован процесс регистрации, пожалуйста следуйте инструкциям:\n <b>1. Если вы учитель</b>, введите своё имя и фамилию, после ввода всех данных нажмите кнопку 'Учитель'. \n <b>2. Если вы капитан команды</b>, введите своё имя, фамилию, номер класса, букву класса, в меню ID команды введите 0, для создания команды, после ввода всех данных нажмите кнопку 'Готово'. \n <b>2. Если вы участник команды(не капитан)</b>, введите своё имя, фамилию, номер класса, букву класса, в меню ID команды введите, ID которое вывело капитану после регистрации команды, после ввода всех данных нажмите кнопку 'Готово'", parse_mode="HTML", reply_markup=markups(['Имя', 'Фамилия', 'Номер класса', 'Буква класса', 'ID Команды'  'Готово']))
 
 @bot.message_handler(commands=['restart'])
 def start_message(message):
@@ -75,22 +77,25 @@ class MessageHandler:
     class Reg:
         def reg_to_menu(bot, message, user):
             user_update(user, status="reg_menu")
-            bot.send_message(user["id"], "Введите свои данные", reply_markup=markups(['Имя', 'Фамилия', 'Номер класса', 'Буква класса',  'Готово']))
             return True
 
         def reg_menu(bot, message, user):
             if(message.text.upper() == "ИМЯ"):
                 user_update(user, status="reg_name")
-                return MessageHandler.Reg.reg_name
+                return MessageHandler.Reg.reg_name(bot, message, user)
             if(message.text.upper() == "ФАМИЛИЯ"):
                 user_update(user, status="reg_surname")
-                return MessageHandler.Reg.reg_surname
+                return MessageHandler.Reg.reg_surname(bot, message, user)
             if(message.text.upper() == "НОМЕР КЛАССА"):
                 user_update(user, status="reg_num_class")
-                return MessageHandler.Reg.reg_num_class
+                return MessageHandler.Reg.reg_num_class(bot, message, user)
             if(message.text.upper() == "БУКВА КЛАССА"):
                 user_update(user, status="reg_let_class")
-                return MessageHandler.Reg.reg_let_num
+                return MessageHandler.Reg.reg_let_class(bot, message, user)
+            if(message.text.upper() == "ID КОМАНДЫ"):
+                user_update(user, status="reg_id_team")
+            
+            return True
 
         def reg_name(bot, message, user):
             bot.send_message(user["id"], "Введите ваше имя", reply_markup=markups(['Назад']))
@@ -98,47 +103,55 @@ class MessageHandler:
                 return MessageHandler.Reg.reg_to_menu
             elif(message.text.upper() != "ИМЯ" and message.text.upper() != "НАЗАД"):
                 DB.update(user, {'name': message.text}, [['id', '=', user['id']]])
-            else:
-                return False
+            
+            return True
         def reg_surname(bot, message, user):
             bot.send_message(user["id"], "Введите вашу фамилию", reply_markup=markups(['Назад']))
             if(message.text.upper() == "НАЗАД"):
                 return MessageHandler.Reg.reg_to_menu
             elif(message.text.upper() != "ФАМИЛИЯ" and message.text.upper() != "НАЗАД"):
                 DB.update(user, {'surname': message.text}, [['id', '=', user['id']]])
-            else:
-                return False
+            
+            return True
+        
         def reg_num_class(bot, message, user):
             bot.send_message(user["id"], "Введите номер вашего класса", reply_markup=markups(['Назад']))
             if(message.text.upper() == "НАЗАД"):
                 return MessageHandler.Reg.reg_to_menu
             elif(message.text.upper() != "НОМЕР КЛАССА" and message.text.upper() != "НАЗАД"):
                 DB.update(user, {'num_class': message.text}, [['id', '=', user['id']]])
-            else:
-                return False
+            return True
+        
         def reg_let_class(bot, message, user):
             bot.send_message(user["id"], "Введите букву вашего класса", reply_markup=markups(['Назад']))
             if(message.text.upper() == "НАЗАД"):
                 return MessageHandler.Reg.reg_to_menu
             elif(message.text.upper() != "БУКВА КЛАССА" and message.text.upper() != "НАЗАД"):
                 DB.update(user, {'let_class': message.text}, [['id', '=', user['id']]])
-            else:
-                return False
+            
+            return True
         
         def reg_team_id(bot, message, user):
             bot.send_message(user["id"], "Введите номер вашей команды, если у вас нет команды введите 0", reply_markup=markups(['Назад']))
             if(message.text.upper() == "НАЗАД"):
-                return MessageHandler.Reg.reg_to_menu
-            elif(message.text.upper() == "1"):
-                user_update(user, status="reg_team"):
+                return MessageHandler.Reg.reg_to_menu(bot, message, user)
+            elif(message.text.upper() == "0"):
+                user_update(user, status="reg_team")
                 return MessageHandler.Reg.reg_team(bot, message, user)
             elif(message.text.upper() != "БУКВА КЛАССА" and message.text.upper() != "НАЗАД"):
-                DB.update(user, {'team_id': message.text}, [['id', '=', user['id']]])
-            else:
-                return False
+                data = DB.select('Teams', where= [['id', '=', int(message.text)]], limit=1)
+                print(data)
+                if(len(data) == 1):
+                    DB.update(user, {'team_id': message.text}, [['id', '=', user['id']]])
+                    bot.send_message(user["id"], "Вы успешно присоединились к команде", reply_markup=markups(['Имя', 'Фамилия', 'Номер класса', 'Буква класса', 'ID Команды'  'Готово']))
+                else:
+                    bot.send_message(user["id"], "Такой команды не найдено")
+            return True
+
         
-        def reg_team(bot, message, user):
-            bot.send_message(user["id"], "")
+        class Team:
+            def reg_team(bot, message, user):
+                bot.send_message(user["id"], "")
         
 
 
@@ -163,7 +176,11 @@ def handle_text(message):
     action = {
         "menu": MessageHandler.Main.menu,
         "reg_menu": MessageHandler.Reg.reg_menu,
-        "reg_name": MessageHandler.Reg.reg_name
+        "reg_name": MessageHandler.Reg.reg_name,
+        "reg_surname": MessageHandler.Reg.reg_surname,
+        "reg_let_class": MessageHandler.Reg.reg_let_class,
+        "reg_num_class": MessageHandler.Reg.reg_num_class,
+        "reg_id_team": MessageHandler.Reg.reg_team_id,
     }
     if action.get(user["status"]):
         if not action[user["status"]](bot, message, user):
