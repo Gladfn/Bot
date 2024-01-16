@@ -71,20 +71,39 @@ class MessageHandler:
 
         def menu(bot, message, user):
             if ("ИНФО" in message.text.upper()):
-                bot.send_message(message.chat.id, "Привет, я бот для тренировки в CTF. Здесь ты можешь по практиковаться в задачах CTF", reply_markup=menu_markups())
+                bot.send_message(message.chat.id, "Привет, я бот для тренировки в CTF. Здесь ты можешь по практиковаться в задачах CTF\n<b>Если вы хотите решать задачи,</b> нажмите кнопку 'Задачи', но учтите ответы на задания может загружать только капитан.\n<b>Если при регистрации ввели, что-то не так</b> в настройках вы можете поменять любую информацию о себе\n<b>Если нашли недочёт,</b> пишите об этом мне, @Gladfn", parse_mode="HTML", reply_markup=menu_markups())
                 return True
-            if ("Задачи" in message.text.upper()):
+            elif ("ЗАДАЧИ" in message.text.upper()):
                 tasks = DB.select('Tasks')
-                bot.send_message(message.chat.id, "На данный момент у вашей команды не решены следующие задачи:\n", reply_markup = markups(['Назад']))
-                for i in range(len(tasks)):
-                    if(user['id_team'] not in json.loads(tasks[i][4])):
-                        pass 
 
+                but = []
+
+                answer = ''
+                for i in range(len(tasks)):
+                    data = json.loads(tasks[i][4])
+                    print(data)
+                    if(user['id_team'] not in json.loads(tasks[i][4])):
+                        answer += "Задача №" + str(i + 1) + ")"
+                        answer += " " + tasks[i][1]
+                        answer += "\n"
+                        but.append(tasks[i][1])
                 
-            return True
+                bot.send_message(message.chat.id, "На данный момент у вашей команды не решены следующие задачи:")
+                bot.send_message(user['id'], answer)
+                but.append('Назад')
+                bot.send_message(message.chat.id, "Выберите задачу которую хотите решить:", reply_markup=markups(but))
+                user_update(user, status="tasks")
+                return MessageHandler.Main.tasks(bot, message, user)                
+            elif ("НАСТРОЙКИ" in message.text.upper()):
+                return MessageHandler.Settings.set_to_menu(bot, message, user)
+            else:
+                return False
         
         def tasks(bot, message, user):
-
+            if("НАЗАД" in message.text.upper()):
+                return MessageHandler.Main.to_menu(bot, message, user)
+            if("ЗАДАЧИ" not in message.text.upper() and "НАЗАД" not in message.text.upper()):
+                DB.select('Tasks', )
             return True
     
     class Settings:
@@ -212,7 +231,7 @@ class MessageHandler:
 
             def reg_team_menu(bot, message, user):
                 if("НАЗВАНИЕ" in message.text.upper()):
-                    bot.send_message(user["id"], "Введите название команды, вы сможете его изменить в настройках:", reply_markup=markups(['Назад']))
+                    bot.send_message(user["id"], "Введите название команды:", reply_markup=markups(['Назад']))
                     return MessageHandler.Reg.Team.reg_team_name(bot, message, user)
                 if("НАЗАД" in message.text.upper()):
                     bot.send_message(user["id"], "Возвращаю", reply_markup=markups(['Имя', 'Фамилия', 'Номер класса', 'Буква класса', 'ID Команды', 'Готово']))
