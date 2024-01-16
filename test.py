@@ -3,4 +3,4 @@ import config
 
 DB = D(config.mysql)
 
-print(DB.select('Teams', 'people', [['id', '=', '1']], 1))
+print(DB.select('Users', ['num_class'], [['id', '=', '1']], 1))
