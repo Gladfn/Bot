@@ -1,9 +1,12 @@
-from DB import DB as D
-import config
-import json
+a = int(input())
 
-DB = D(config.mysql)
+col = 0
 
-data = []
-data.append('1.jpeg')
-print(DB.update('Tasks', {'files': json.dumps(data)}, [['id', '=', '1']]))
+while a != 0:
+    
+    
+    if(a % 5 == 0 or a % 9 == 0):
+        col += 1
+
+    a = int(input())
+print(col)
