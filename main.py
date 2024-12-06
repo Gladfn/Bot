@@ -1,24 +1,33 @@
+#Importing modules
 import telebot
 import config
 import json
 import time
 import mysql.connector
 
-from DB import DB as D
+#Importing classes from modules
 from threading import Thread
 from telebot import types
 
+#Importing modules from DB.py
+from DB import DB as D
+
+#Connecting telegram bot
 bot = telebot.TeleBot(config.TOKEN)
+#Connecting database
 DB = D(config.mysql)
 
+#Send message to user
 bot.send_message(1294113685, "Start Bot")
 
+#Trying to load json data
 def json_loads(data):
     try:
         return json.loads(data)
     except:
         return None
 
+#Getting data about user from databse. If in databse don't have data about user, create new user
 def get_user(message):
     data = DB.select('Users', ['id', 'name', 'surname', 'num_class', 'let_class', 'id_team', 'status'], [['id', '=', message.chat.id]], 1)
     if (data):
@@ -27,12 +36,15 @@ def get_user(message):
         DB.insert('Users', ['id', 'name', 'surname', 'num_class', 'let_class', 'id_team', 'status'], [[message.chat.id, message.chat.first_name, "NaN", 5, 'А', -1, 'reg_menu']])
         return {"id": message.chat.id, "name": message.chat.first_name, "num_class": 5, "let_class": 'А', "id_team": -1, "status": 'reg_menu'}
 
+#Creating and update logs
 def log(message, user):
     query = "INSERT INTO log (text) VALUES (%s)"
 
+#Updating user status
 def user_update(user, status=None):
     DB.update('Users', {'status': status}, [['id', '=', user['id']]])
 
+#Creating buttons
 def markups(buttons):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     b = []
@@ -41,10 +53,12 @@ def markups(buttons):
     markup.add(*b)
     return markup
 
+#Creating menu markups
 def menu_markups(user):
     answer = markups(["Задачи🖥️", "Инфоℹ", "Топ🔝","Настройки⚙️"])
     return answer
 
+#Sending message, if user send command 'start'. Updating user status
 @bot.message_handler(commands=['start'])
 def start_message(message):
     user = get_user(message)
@@ -55,12 +69,14 @@ def start_message(message):
     else:
         bot.send_message(user["id"], "Инициализирован процесс регистрации, пожалуйста следуйте инструкциям:\n <b>1. Если вы учитель</b>, введите своё имя и фамилию, после ввода всех данных нажмите кнопку 'Учитель'. \n <b>2. Если вы капитан команды</b>, введите своё имя, фамилию, номер класса, букву класса, в меню ID команды введите 0, для создания команды, после ввода всех данных нажмите кнопку 'Готово'. \n <b>3. Если вы участник команды(не капитан)</b>, введите своё имя, фамилию, номер класса, букву класса, в меню ID команды введите, ID которое вывело капитану после регистрации команды, после ввода всех данных нажмите кнопку 'Готово'", parse_mode="HTML", reply_markup=markups(['Имя', 'Фамилия', 'Номер класса', 'Буква класса', 'ID Команды', 'Готово', 'Учитель']))
 
+#Restart markups, if user send command 'restart'. Updating user status
 @bot.message_handler(commands=['restart'])
 def start_message(message):
     user = get_user(message)
     bot.send_message(message.chat.id,"Перезаряжаю!!!!!!!!!!", reply_markup=menu_markups(user))
     log(message, user)
     user_update(user, "menu")
+
 
 class MessageHandler:
     class Main:
