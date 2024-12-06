@@ -1,33 +1,33 @@
-#Importing modules
+#Импортирование моделей для работы бота
 import telebot
 import config
 import json
 import time
 import mysql.connector
 
-#Importing classes from modules
+#Импортирование классов из модулей
 from threading import Thread
 from telebot import types
 
-#Importing modules from DB.py
+#Импортирование класса из файла DB.py
 from DB import DB as D
-
-#Connecting telegram bot
+ 
+#Подключение к телеграмм боту
 bot = telebot.TeleBot(config.TOKEN)
-#Connecting database
+#Подключение к базе данных
 DB = D(config.mysql)
 
-#Send message to user
+#Отправка сообщения пользователю
 bot.send_message(1294113685, "Start Bot")
 
-#Trying to load json data
+#Загрузка json данных, при неудаче загрузка не происходит
 def json_loads(data):
     try:
         return json.loads(data)
     except:
         return None
 
-#Getting data about user from databse. If in databse don't have data about user, create new user
+#Получение данных о пользователе, если он имеется в базе данных, иначе создание нового пользователя
 def get_user(message):
     data = DB.select('Users', ['id', 'name', 'surname', 'num_class', 'let_class', 'id_team', 'status'], [['id', '=', message.chat.id]], 1)
     if (data):
@@ -36,15 +36,15 @@ def get_user(message):
         DB.insert('Users', ['id', 'name', 'surname', 'num_class', 'let_class', 'id_team', 'status'], [[message.chat.id, message.chat.first_name, "NaN", 5, 'А', -1, 'reg_menu']])
         return {"id": message.chat.id, "name": message.chat.first_name, "num_class": 5, "let_class": 'А', "id_team": -1, "status": 'reg_menu'}
 
-#Creating and update logs
+#Ведение логов о том, что вводили пользователи
 def log(message, user):
     query = "INSERT INTO log (text) VALUES (%s)"
 
-#Updating user status
+#Обновление статуса пользователя, в параметры передаётся данные пользователя и статус на который надо поменять
 def user_update(user, status=None):
     DB.update('Users', {'status': status}, [['id', '=', user['id']]])
 
-#Creating buttons
+#Создание кнопок, в параметры передаётся массив из кнопок
 def markups(buttons):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     b = []
@@ -53,12 +53,12 @@ def markups(buttons):
     markup.add(*b)
     return markup
 
-#Creating menu markups
+#Создание кнопок для меню, в параметры передаётся только данные пользователя
 def menu_markups(user):
     answer = markups(["Задачи🖥️", "Инфоℹ", "Топ🔝","Настройки⚙️"])
     return answer
 
-#Sending message, if user send command 'start'. Updating user status
+#После того как пользователь введёт команду 'start', телеграмм бот отправит ему сообщение и обновит его статус до 'menu'
 @bot.message_handler(commands=['start'])
 def start_message(message):
     user = get_user(message)
@@ -69,7 +69,7 @@ def start_message(message):
     else:
         bot.send_message(user["id"], "Инициализирован процесс регистрации, пожалуйста следуйте инструкциям:\n <b>1. Если вы учитель</b>, введите своё имя и фамилию, после ввода всех данных нажмите кнопку 'Учитель'. \n <b>2. Если вы капитан команды</b>, введите своё имя, фамилию, номер класса, букву класса, в меню ID команды введите 0, для создания команды, после ввода всех данных нажмите кнопку 'Готово'. \n <b>3. Если вы участник команды(не капитан)</b>, введите своё имя, фамилию, номер класса, букву класса, в меню ID команды введите, ID которое вывело капитану после регистрации команды, после ввода всех данных нажмите кнопку 'Готово'", parse_mode="HTML", reply_markup=markups(['Имя', 'Фамилия', 'Номер класса', 'Буква класса', 'ID Команды', 'Готово', 'Учитель']))
 
-#Restart markups, if user send command 'restart'. Updating user status
+#Перезапуск кнопок и отправка сообщение об этом
 @bot.message_handler(commands=['restart'])
 def start_message(message):
     user = get_user(message)
@@ -77,18 +77,24 @@ def start_message(message):
     log(message, user)
     user_update(user, "menu")
 
-#Main class
+#Главный класс
 class MessageHandler:
+    #Класс в котором находятся основные функции бота
     class Main:
+        #Отправка польлзователя в меню
         def to_menu(bot, message, user):
             bot.send_message(user["id"], "Хорошего дня!", reply_markup=menu_markups(user))
             user_update(user, status="menu")
             return True
 
+        #В данной функции находиться действия, которые происходят в меню
         def menu(bot, message, user):
+            #Если пользователь напишет "Инфо", то телеграмм бот напишет информацию о нём
             if ("ИНФО" in message.text.upper()):
                 bot.send_message(message.chat.id, "Привет, я бот для тренировки в CTF. Здесь ты можешь по практиковаться в задачах CTF\n<b>Если вы хотите решать задачи,</b> нажмите кнопку 'Задачи', но учтите ответы на задания может загружать только капитан.\n<b>Если при регистрации ввели, что-то не так</b> в настройках вы можете поменять любую информацию о себе\n<b>Если нашли недочёт,</b> пишите об этом мне, @Gladfn", parse_mode="HTML", reply_markup=menu_markups(user))
                 return True
+            
+            #Если пользователь напишет "Задачи", то телеграмм бот заменит кнопку и напишет информацию о не решённых задачах и покажет их
             elif ("ЗАДАЧИ" in message.text.upper()):
                 tasks = DB.select('Tasks')
 
@@ -110,10 +116,14 @@ class MessageHandler:
                 but.append('Назад')
                 bot.send_message(message.chat.id, "Выберите задачу которую хотите решить:", reply_markup=markups(but))
                 user_update(user, status="tasks")
-                return MessageHandler.Main.tasks(bot, message, user)                
+                return MessageHandler.Main.tasks(bot, message, user)
+            
+            #Если пользователь напишет "Настройки", то телеграмм бот перенаправит пользователя в настройки, которые являются другим классом
             elif ("НАСТРОЙКИ" in message.text.upper()):
                 bot.send_message(user['id'], "Выберите, что хотите изменить:", reply_markup=markups(['Имя', 'Фамилия', 'Номер класса', 'Буква класса', 'Готово']))
                 return MessageHandler.Settings.set_to_menu(bot, message, user)
+        
+            #Если пользователь напишет "Настройки", то телеграмм бот покажет топ команд на данный момент
             elif ("ТОП" in message.text.upper()):
                 teams = DB.select('Teams', ['team_name', 'points'])
                 answer = ""
@@ -145,10 +155,15 @@ class MessageHandler:
             
             return True
         
+        #Данная функция отвечает за действия с задачами
         def tasks(bot, message, user):
+            
+            #Если пользователь напишет "Назад", то телеграмм бот отправит пользователя обратно в меню
             if("НАЗАД" in message.text.upper()):
                 return MessageHandler.Main.to_menu(bot, message, user)
-            if("ЗАГРУЗИТЬ РЕШЕНИЕ" in message.text.upper()):
+            
+            #Если пользователь напишет "Загрузить решение", то телеграмм бот выполнит проверку на то, является ли пользователей капитаном команду, если так то разрешит ему сдать задачу, иначе напишет, что пользователь не являтся капитаном
+            elif("ЗАГРУЗИТЬ РЕШЕНИЕ" in message.text.upper()):
                 if(user['id'] == user['id_team']):
                     user_update(user, status='tasks_comp')
                     tasks = DB.select('Tasks')
@@ -165,8 +180,10 @@ class MessageHandler:
                     
                     return MessageHandler.Main.tasks_comp(bot, message, user)
                 else:
-                    bot.send_message(user["id"], "Вы не являетессь капитаном")
-            if("ЗАДАЧИ" not in message.text.upper() and "НАЗАД" not in message.text.upper()):
+                    bot.send_message(user["id"], "Вы не являетесь капитаном")
+
+            #Если пользователь ввёл не "Задачи" и не "Назад", то выводит задачу, которую попросил пользователь
+            elif("ЗАДАЧИ" not in message.text.upper() and "НАЗАД" not in message.text.upper()):
                 data = DB.select('Tasks', where=[['name', '=', message.text]], limit=1)
                 data = data[0]
                 if(data[-1] != None):
@@ -181,15 +198,20 @@ class MessageHandler:
             
             return True
         
+        #Функция для проверки выполнения задания
         def tasks_comp(bot, message, user):
+            
+            #Если пользователь напишет "Назад", то телеграмм бот вернёт пользователя обратно в задания
             if("НАЗАД" in message.text.upper()):
                 user_update(user, status='tasks')
                 return MessageHandler.Main.tasks(bot, message, user)
+            
             elif("ЗАГРУЗИТЬ РЕШЕНИЕ" not in message.text.upper()):
                 tasks = DB.select('Tasks', where=[['name', '=', message.text]])
                 bot.send_message(user['id'], "Введите ключ, следующим образом(без кавычек): 'id задания,ключ':")
                 user_update(user, status='tasks_comp_end')
                 return MessageHandler.Main.tasks_comp_end(bot, message, user)
+            
             return True
         
         def tasks_comp_end(bot, message, user):
