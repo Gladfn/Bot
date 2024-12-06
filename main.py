@@ -77,7 +77,7 @@ def start_message(message):
     log(message, user)
     user_update(user, "menu")
 
-
+#Main class
 class MessageHandler:
     class Main:
         def to_menu(bot, message, user):
