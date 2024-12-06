@@ -17,8 +17,10 @@ bot = telebot.TeleBot(config.TOKEN)
 #Подключение к базе данных
 DB = D(config.mysql)
 
+ID = #Ваш телеграмм id
+
 #Отправка сообщения пользователю
-bot.send_message(1294113685, "Start Bot")
+bot.send_message(ID, "Start Bot")
 
 #Загрузка json данных, при неудаче загрузка не происходит
 def json_loads(data):
